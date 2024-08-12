@@ -11,6 +11,7 @@ Based on patches and reverse engineering work done by **Worse Than You**. Big th
 Launch GGXrdMirrorColorSelect.exe or GGXrdMirrorColorSelect_32bit.exe and press the **Patch GuiltyGear** button.  
 Close the mod.  
 Launch Guilty Gear Xrd.  
+In Character Select you can now select the mirror color - it will be color \#0.  
 You don't need to ever launch this mod again.
 
 ## Usage on Linux
