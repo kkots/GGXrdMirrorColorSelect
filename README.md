@@ -43,7 +43,7 @@ This should undo all the changes done by the mod.
 
 To compile, open the .sln file in Visual Studio (I use Visual Studio Community Edition 2022) and press Build - Build Solution. It will say where it compiled the .exe file in the Output panel.
 
-Thie .exe expects `decompress.exe` and `GGXrdRevelator.exe` 3'rd-party tools to be present in the **3rdparty** folder next to it. You may download or compile these tools from the sources listed below. They shall not be part of this repository and are provided in Releases section downloads for convenience only.
+This .exe expects `decompress.exe` and `GGXrdRevelator.exe` 3'rd-party tools to be present in the **3rdparty** folder next to it. You may download or compile these tools from the sources listed below. They shall not be part of this repository and are provided in Releases section downloads for convenience only.
 
 ## 3'rd-party tools used and credits
 
