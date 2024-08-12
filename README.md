@@ -54,3 +54,7 @@ Original Unrealscript (in-RAM version) bytecode and .exe patches and all reverse
 **GGXrdRevelator.exe** is used to decrypt Rev2 UPK files. Created by **gdkchan**: <https://github.com/gdkchan/GGXrdRevelatorDec>
 
 **UE Explorer** and its UELib were a huge help in creating the .UPK (disk) version of the patch. Created by **EliotVU** <https://github.com/UE-Explorer/UE-Explorer> and <https://github.com/EliotVU/Unreal-Library>
+
+## About
+
+**Guilty Gear** is a registered trademark of ARC SYSTEM WORKS CO., LTD. Me and this code are in no way affiliated with them or being endorsed by them.
