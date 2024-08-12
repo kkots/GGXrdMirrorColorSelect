@@ -1,0 +1,7 @@
+decompress.exe is from https://www.gildor.org/downloads
+It is unknown whether one has the right to distribute it via sources other than his website without his permission.
+
+GGXrdRevelatorDec.exe is from https://github.com/gdkchan/GGXrdRevelatorDec
+It has ??? license and it is unknown whether one has the right to distribute it.
+
+As of now, until more information is known, please credit the corresponding authors when using or distributing this software.
