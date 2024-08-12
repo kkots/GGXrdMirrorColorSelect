@@ -35,14 +35,30 @@ HBRUSH hbrBkgnd = NULL;
 HFONT font = NULL;
 HWND hWndButton = NULL;
 HWND mainWindow = NULL;
+
+// The patch of the GuiltyGearXrd.exe file that was obtained when the GuiltyGearXrd.exe process was seen working.
 std::wstring ggProcessModulePath;
 std::wstring steamLibraryPath;
+
+// The Y position at which the next text row using addTextRow must be created.
 int nextTextRowY = 5;
+
+// Used to restart adding text rows from some fixed Y position.
 int nextTextRowYOriginal = 5;
+
+// These variables are used for text measurement when creating controls, to determine their sizes.
 HDC hdc = NULL;
 HGDIOBJ oldObj = NULL;
+
+// Specifies text color for each static control.
 std::unordered_map<HWND, COLORREF> controlColorMap;
+
+// Stores the result of the GetTempPath() call.
 wchar_t tempPath[MAX_PATH] { L'\0' };
+
+// The text rows that have been added beneath the "Patch GuiltyGear" button.
+// They must be cleared on each button press so that the new output can be displayed
+// in that same place.
 std::vector<HWND> rowsToRemove;
 
 // Forward declarations of functions included in this code module:
@@ -202,6 +218,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
 	case WM_CTLCOLORSTATIC: {
+		// Provides background and text colors for static (text) controls.
 		auto found = controlColorMap.find((HWND)lParam);
 		if (found != controlColorMap.end()) {
 			HDC hdcStatic = (HDC) wParam;
@@ -214,8 +231,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	break;
     case WM_COMMAND:
+		// A button click
         {
 			if ((HWND)lParam == hWndButton) {
+				// The "Patch GuiltyGear" button
 				handlePatchButton();
 				break;
 			}
@@ -238,7 +257,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
+            // Not drawing anything here yet
             EndPaint(hWnd, &ps);
         }
         break;
@@ -276,6 +295,9 @@ BOOL CALLBACK setFontOnChildWindow(HWND hwnd, LPARAM lParam) {
 	return TRUE;
 }
 
+// Finds if GuiltyGearXrd.exe is currently open and returns a handle to its process.
+// -foundButFailedToOpen- may be used to learn that the process was found, but a handle
+// to it could not be retrieved.
 HANDLE findOpenGgProcess(bool* foundButFailedToOpen) {
     if (foundButFailedToOpen) *foundButFailedToOpen = false;
     // this method was chosen because it's much faster than enumerating all windows or all processes and checking their names
@@ -293,6 +315,8 @@ HANDLE findOpenGgProcess(bool* foundButFailedToOpen) {
     return windsProcHandle;
 }
 
+// Uses Steam config files or other methods to discover the directory where Guilty Gear Xrd is installed.
+// Returns true if a directory was found. The directory still needs to be validated.
 bool findGgInstallPath(std::wstring& path) {
 	
 	if (!ggProcessModulePath.empty()) {
@@ -392,6 +416,7 @@ bool findGgInstallPath(std::wstring& path) {
 	return false;
 }
 
+// Asks the user to select a directory through a dialog.
 bool selectFolder(std::wstring& path) {
     wchar_t pszBuf[MAX_PATH] = { '\0' };
     CComPtr<IFileDialog> fileDialog;
@@ -422,6 +447,7 @@ bool selectFolder(std::wstring& path) {
     return true;
 }
 
+// Obtains the path of the GuiltyGearXrd.exe executable via its process and stores it into -ggProcessModulePath-.
 void fillGgProcessModulePath(HANDLE ggProcess) {
 	// sneaky or convenient? User is completely unaware of this feature, UI is not communicating it in any way
 	ggProcessModulePath.resize(MAX_PATH - 1, L'\0');
@@ -441,6 +467,7 @@ void fillGgProcessModulePath(HANDLE ggProcess) {
 	ggProcessModulePath.resize(wcslen(ggProcessModulePath.c_str()));
 }
 
+// Checks if the provided installation path is valid.
 bool validateInstallPath(std::wstring& path) {
 	std::wstring pathFixed = path;
 	if (pathFixed.empty() || pathFixed[pathFixed.size() - 1] != L'\\') {
@@ -462,11 +489,13 @@ bool validateInstallPath(std::wstring& path) {
 
 }
 
+// Calls this once before calling addTextRow one or more times
 void beginInsertRows() {
 	hdc = GetDC(mainWindow);
 	oldObj = SelectObject(hdc, (HGDIOBJ)font);
 }
 
+// Calls this once after calling addTextRow one or more times
 void finishInsertRows() {
 	SelectObject(hdc, oldObj);
 	ReleaseDC(mainWindow, hdc);
@@ -474,6 +503,9 @@ void finishInsertRows() {
 	oldObj = NULL;
 }
 
+// One or more calls to this method must be wrapped by a single call to beginInsertRows()
+// and a single calls to finishInsertRows().
+// Adds a row of text at -nextTextRowY-.
 HWND addTextRow(const wchar_t* txt) {
 	SIZE textSz{0};
 	GetTextExtentPoint32W(hdc, stringAndItsLength(txt), &textSz);
@@ -486,6 +518,7 @@ HWND addTextRow(const wchar_t* txt) {
 	return newWindow;
 }
 
+// Breaks up a string into multiple by -c- char. The new strings do not include the delimiter.
 std::vector<std::wstring> split(const std::wstring& str, wchar_t c) {
 	std::vector<std::wstring> result;
 	const wchar_t* strStart = &str.front();
@@ -506,6 +539,11 @@ std::vector<std::wstring> split(const std::wstring& str, wchar_t c) {
 	}
 	return result;
 }
+
+// Creates one or more text rows for each element in -remarks-.
+// It depends on whether the text row's character count is below some fixed predetermined count.
+// If it's greater the row gets split into multiple.
+// All rows are colored blue.
 void printRemarks(std::vector<std::wstring>& remarks) {
 	for (std::wstring& line : remarks) {
 		beginInsertRows();
@@ -528,7 +566,9 @@ void printRemarks(std::vector<std::wstring>& remarks) {
 	}
 }
 
+// The "Patch GuiltyGear" button handler.
 void handlePatchButton() {
+	// Delete messages from the previous run of the handlePatchButton()
 	for (HWND hwnd : rowsToRemove) {
 		DestroyWindow(hwnd);
 		controlColorMap.erase(hwnd);
@@ -542,10 +582,12 @@ void handlePatchButton() {
 	rowsToRemove.clear();
 	nextTextRowY = nextTextRowYOriginal;
 
+	// GuiltyGearXrd.exe must not be running during the patching process.
 	bool foundButFailedToOpen = false;
 	HANDLE ggProcess = findOpenGgProcess(&foundButFailedToOpen);
 	if (ggProcess || foundButFailedToOpen) {
 		if (ggProcess) {
+			// We can use the path of GuiltyGearXrd.exe as a backup mechanism for determining the installation directory of the game.
 			fillGgProcessModulePath(ggProcess);
 			CloseHandle(ggProcess);
 			ggProcess = NULL;
@@ -558,6 +600,7 @@ void handlePatchButton() {
 		ggProcess = NULL;
 	}
 	
+	// Find where the game is installed.
 	std::wstring installPath;
 	if (!(findGgInstallPath(installPath) && !installPath.empty() && validateInstallPath(installPath))) {
 		installPath.clear();
@@ -567,6 +610,7 @@ void handlePatchButton() {
 		if (response != IDOK) {
 			return;
 		}
+		// Ask the user to provide the installation directory manually if we failed to find it.
 		if (!selectFolder(installPath)) {
 			installPath.clear();
 		}
@@ -580,6 +624,8 @@ void handlePatchButton() {
 	if (installPath[installPath.size() - 1] != L'\\') {
 		installPath += L'\\';
 	}
+
+	// Patch GuiltyGearXrd.exe.
 	std::wstring remarks;
 	if (!performExePatching(installPath + L"Binaries\\Win32\\GuiltyGearXrd.exe", remarks, mainWindow)) {
 		return;
@@ -618,6 +664,8 @@ void handlePatchButton() {
 
 	std::wstring upkOriginal = installPath + L"REDGame\\CookedPCConsole\\REDGame.upk";
 	if (!isUpk(upkOriginal)) {
+		// If the file is not a .UPK file, that means it's encrypted, so we must decrypted and decompress it.
+		// It also means that it's definitely not patched.
 		if (!getLastUpkError().empty()) {
 			MessageBoxW(mainWindow, (L"Error reading " + upkOriginal + L": " + getLastUpkError()).c_str(), L"Error", MB_OK);
 			return;
@@ -629,6 +677,8 @@ void handlePatchButton() {
 				return;
 			}
 		}
+
+		// Create a temporary directory.
 		wchar_t tempFolder[MAX_PATH] { '\0' };
 		if (GetTempFileNameW(tempPath, L"GGXrdMirrorColorSelect", 0, tempFolder) == 0) {
 			WinError winErr;
@@ -648,6 +698,7 @@ void handlePatchButton() {
 
 		tempFileDeleter.tempFolder.push_back(tempFolder);
 
+		// Copy REDGame.upk into the temporary directory.
 		std::wstring tempUpkPath = tempFolder;
 		tempUpkPath += L"\\REDGame.upk";
 		if (!CopyFileW(upkOriginal.c_str(), tempUpkPath.c_str(), true)) {
@@ -658,6 +709,7 @@ void handlePatchButton() {
 
 		tempFileDeleter.tempFile.push_back(tempUpkPath);
 
+		// Decrypt REDGame.upk using the decrypted and save it as REDGame.upk.dec in that same directory.
 		STARTUPINFOW startupInfo{0};
 		startupInfo.cb = sizeof(STARTUPINFOW);
 		PROCESS_INFORMATION processInfo{0};
@@ -692,6 +744,8 @@ void handlePatchButton() {
 
 		tempFileDeleter.tempFile.push_back(tempUpkPath);
 
+		// Decompress REDGame.upk.dec using the decompression tool.
+		// The decompressed file REDGame.upk.dec will appear in the 'unpacked' directory within the temporary directory.
 		commandLineStr = L"3rdparty\\decompress.exe " + tempUpkPath;
 		commandLineSize = (commandLineStr.size() + 1) * sizeof(wchar_t);
 		commandLine = (wchar_t*)malloc(commandLineSize);
@@ -729,11 +783,13 @@ void handlePatchButton() {
 			return;
 		}
 
+		// Patch the now decrypted and decompressed UPK in-place (no extra copies).
 		if (!performUpkPatching(tempUpkPath)) {
 			MessageBoxW(mainWindow, (L"Failed to patch REDGame.upk: " + getLastUpkError()).c_str(), L"Error", MB_OK);
 			return;
 		}
 
+		// Backup the original REDGame.upk, the one that is in the game's directory.
 		std::wstring backupName = generateUniqueBackupName(upkOriginal);
 		if (!MoveFileW(upkOriginal.c_str(), backupName.c_str())) {
 			WinError winErr;
@@ -744,6 +800,7 @@ void handlePatchButton() {
 		remarksLines.push_back(L"Created backup copy of REDGame.upk at " + backupName);
 		tempFileDeleter.remarksToPrint = &remarksLines;
 
+		// Place the new, patched REDGame.upk.dec, into the game's directory, and rename it to REDGame.upk.
 		if (!MoveFileW(tempUpkPath.c_str(), upkOriginal.c_str())) {
 			WinError winErr;
 			MessageBoxW(mainWindow, (L"Failed to rename " + tempUpkPath + L" to " + upkOriginal + L": " + winErr.getMessage()).c_str(), L"Error", MB_OK);
@@ -756,6 +813,10 @@ void handlePatchButton() {
 
 	} else {
 		
+		// If the file is a .UPK, that means it is not encrypted, and we will assume that it is not compressed either.
+		// That means it could potentially be already patched, so we need to check that.
+
+		// Do not patch the UPK, simply check if it needs to be patched.
 		bool needPatch = false;
 		if (!performUpkPatching(upkOriginal, true, &needPatch)) {
 			MessageBoxW(mainWindow, (L"Failed to read REDGame.upk: " + getLastUpkError()).c_str(), L"Error", MB_OK);
@@ -764,7 +825,8 @@ void handlePatchButton() {
 		if (!needPatch) {
 			remarksLines.push_back(L"REDGame.upk is already patched, so no backing up or patching took place.");
 		} else {
-			
+			// The UPK needs to be patched.
+			// Create a backup copy of it.
 			std::wstring backupName = generateUniqueBackupName(upkOriginal);
 			if (!CopyFileW(upkOriginal.c_str(), backupName.c_str(), true)) {
 				WinError winErr;
@@ -774,6 +836,7 @@ void handlePatchButton() {
 			
 			remarksLines.push_back(L"Created backup copy of REDGame.upk at " + backupName);
 
+			// Patch the UPK file in-place.
 			if (!performUpkPatching(upkOriginal)) {
 				MessageBoxW(mainWindow, (L"Failed to patch REDGame.upk: " + getLastUpkError()).c_str(), L"Error", MB_OK);
 				return;

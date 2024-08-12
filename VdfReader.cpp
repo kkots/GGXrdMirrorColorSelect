@@ -38,7 +38,13 @@ VdfReader::~VdfReader() {
 	close();
 }
 
-std::vector<std::wstring> pathStringToVectorOfString(const std::wstring& pathStr) {
+// Splits the -pathStr-, which is expected to be a string of the following format:
+//  "keyName1/keyName2/keyName3"
+// ..., into a vector of key names:
+// 0: keyName1
+// 1: keyName2
+// 2: keyName3
+static std::vector<std::wstring> pathStringToVectorOfString(const std::wstring& pathStr) {
 	std::vector<std::wstring> pathVec;
 	int lastPos = -1;
 	int pos = -1;

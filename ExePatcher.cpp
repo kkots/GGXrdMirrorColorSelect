@@ -14,6 +14,8 @@ using namespace std::literals;
 static char errstr[1024] { '\0' };
 static char sprintfbuf[1024] { '\0' };
 
+// A class for simulating std::wcout << things.
+// Prints everything into the debug console.
 // Should I just extend wostream?.. Naah.
 class OutputMachine {
 public:
@@ -64,6 +66,12 @@ private:
 	bool isHex = false;
 } dout;
 
+// byteSpecification is of the format "00 8f 1e ??". ?? means unknown byte.
+// Converts a "00 8f 1e ??" string into two vectors:
+// sig vector will contain bytes '00 8f 1e' for the first 3 bytes and 00 for every ?? byte.
+// sig vector will be terminated with an extra 0 byte.
+// mask vector will contain an 'x' character for every non-?? byte and a '?' character for every ?? byte.
+// mask vector will be terminated with an extra 0 byte.
 static void byteSpecificationToSigMask(const char* byteSpecification, std::vector<char>& sig, std::vector<char>& mask) {
 	unsigned long long accumulatedNibbles = 0;
 	int nibbleCount = 0;
@@ -117,6 +125,21 @@ static void byteSpecificationToSigMask(const char* byteSpecification, std::vecto
 	mask.push_back('\0');
 }
 
+// 
+// 
+
+/// <summary>
+/// A sigscan is an operation that looks for a pattern of bytes in a given region of binary data.
+// The function returns the position of the start of the pattern within the region, relative to the start of the region,
+// or -1 if the pattern is not found.
+// The pattern is formed using -sig- and -mask- vectors and is described in byteSpecificationToSigMask function.
+/// </summary>
+/// <param name="start">The start of the searched region.</param>
+/// <param name="end">The non-inclusive end of the searched region.</param>
+/// <param name="sig">Signature, for ex. "\x80\x9f\xaa\x00\x00". Described in byteSpecificationToSigMask function.</param>
+/// <param name="mask">Mask, for ex. "xxx??". Described in byteSpecificationToSigMask function.</param>
+/// <returns>Position of the first matching pattern within the region, relative to start.
+/// -1 if the pattern is not found.</returns>
 static int sigscanSigMask(const char* start, const char* end, const char* sig, const char* mask) {
     const char* startPtr = start;
     const size_t maskLen = strlen(mask);
@@ -139,6 +162,22 @@ static int sigscanSigMask(const char* start, const char* end, const char* sig, c
     return -1;
 }
 
+/// <summary>
+/// A sigscan is an operation that looks for a pattern of bytes in a given region of binary data.
+// The function returns the position of the start of the pattern relative to -fileStart-,
+// or -1 if the pattern is not found.
+// The pattern is formed using -sig- and -mask- vectors and is described in byteSpecificationToSigMask function.
+/// </summary>
+/// <param name="fileStart">The address of the start of the file data that was wholly read and loaded into memory.
+/// Is not used to limit the searched region. Is only used to calculate the offset of the start of the pattern
+/// relative to this -fileStart-.</param>
+/// <param name="start">The start of the memory region to be searched. This start is expected to be no less than
+/// -fileStart-.</param>
+/// <param name="end">The non-inclusive end of the memory region to be searched.</param>
+/// <param name="sig">Signature, for ex. "\x80\x9f\xaa\x00\x00". Described in byteSpecificationToSigMask function.</param>
+/// <param name="mask">Mask, for ex. "xxx??". Described in byteSpecificationToSigMask function.</param>
+/// <returns>Position of the first matching pattern within the in-memory (wholly read) file, relative to -fileStart-.
+/// -1 if the pattern is not found.</returns>
 static int sigscan(const char* fileStart, const char* start, const char* end, const char* sig, const char* mask) {
     int result = sigscanSigMask(start, end, sig, mask);
 	if (result == -1) {
@@ -148,6 +187,21 @@ static int sigscan(const char* fileStart, const char* start, const char* end, co
 	}
 }
 
+/// <summary>
+/// A sigscan is an operation that looks for a pattern of bytes in a given region of binary data.
+/// The function returns the position of the start of the pattern relative to -fileStart-,
+/// or -1 if the pattern is not found.
+/// The pattern is formed using byteSpecification.
+/// </summary>
+/// <param name="fileStart">The address of the start of the file data that was wholly read and loaded into memory.
+/// Is not used to limit the searched region. Is only used to calculate the offset of the start of the pattern
+/// relative to this -fileStart-.</param>
+/// <param name="start">The start of the memory region to be searched. This start is expected to be no less than
+/// -fileStart-.</param>
+/// <param name="end">The non-inclusive end of the memory region to be searched.</param>
+/// <param name="byteSpecification">byteSpecification is of the format "00 8f 1e ??". ?? means unknown byte, which can match any byte.</param>
+/// <returns>Position of the first matching pattern within the in-memory (wholly read) file, relative to -fileStart-.
+/// -1 if the pattern is not found.</returns>
 static int sigscan(const char* fileStart, const char* start, const char* end, const char* byteSpecification) {
 	
 	std::vector<char> sig;
@@ -187,6 +241,8 @@ static bool readWholeFile(FILE* file, std::vector<char>& wholeFile) {
     return true;
 }
 
+// Writes bytes into the file at the given -pos- without doing any shifting, meaning it overwrites any data
+// at this region.
 static bool writeBytesToFile(FILE* file, int pos, const char* bytesToWrite, size_t bytesToWriteCount) {
     fseek(file, pos, SEEK_SET);
     size_t writtenBytes = fwrite(bytesToWrite, 1, bytesToWriteCount, file);
@@ -196,6 +252,14 @@ static bool writeBytesToFile(FILE* file, int pos, const char* bytesToWrite, size
     return true;
 }
 
+/// <summary>
+/// Writes bytes into the file at the given -pos- without doing any shifting, meaning it overwrites any data
+/// at this region.
+/// </summary>
+/// <param name="file">The file to write into.</param>
+/// <param name="pos">The position to write at in the file.</param>
+/// <param name="byteSpecification">byteSpecification is of the format "00 8f 1e". ?? bytes are interpreted as 00 here.</param>
+/// <returns>true if no error encountered.</returns>
 static bool writeBytesToFile(FILE* file, int pos, const char* byteSpecification) {
 	std::vector<char> sig;
 	std::vector<char> mask;
@@ -209,15 +273,35 @@ static bool writeBytesToFile(FILE* file, int pos, const char* byteSpecification)
     return true;
 }
 
+// A section of an .exe file, for example .text, .reloc section, etc.
 struct Section {
     std::string name;
+
+	// RVA. Virtual address offset relative to the virtual address start of the entire .exe.
+	// So let's say the whole .exe starts at 0x400000 and RVA is 0x400.
+	// That means the non-relative VA is 0x400000 + RVA = 0x400400.
+	// Note that the .exe, although it does specify a base virtual address for itself on the disk,
+	// may actually be loaded anywhere in the RAM once it's launched, and that RAM location will
+	// become its base virtual address.
     uintptr_t relativeVirtualAddress = 0;
+
+	// VA. Virtual address within the .exe.
+	// A virtual address is the location of something within the .exe once it's loaded into memory.
+	// An on-disk, file .exe is usually smaller than when it's loaded so it creates this distinction
+	// between raw address and virtual address.
     uintptr_t virtualAddress = 0;
+
+	// The size in terms of virtual address space.
     uintptr_t virtualSize = 0;
+
+	// Actual position of the start of this section's data within the file.
     uintptr_t rawAddress = 0;
+
+	// Size of this section's data on disk in the file.
     uintptr_t rawSize = 0;
 };
 
+// Reads info about sections such as .text, .reloc, etc.
 static std::vector<Section> readSections(FILE* file) {
 
     std::vector<Section> result;

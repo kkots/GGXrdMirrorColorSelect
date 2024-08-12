@@ -10,15 +10,20 @@
 
 #define PACKAGE_FILE_TAG			0x9E2A83C1
 
+// for ""s literals
 using namespace std::literals;
 
+// Last error produced by either the performUpkPatching, or isUpk or one of the nested calls
 static std::wstring lastError;
+// Buffer used for all sprintf_s calls
 static char sprintfbuf[1024] { 0 };
 
 const std::wstring& getLastUpkError() {
 	return lastError;
 }
 
+// The dividend is the number that we divide, and the divisor is what we divide it by
+// This function rounds the division result up if it isn't whole
 static int divideIntButRoundUp(int dividend, int divisor) {
 	int mod = dividend % divisor;
 	if (mod) {
@@ -29,7 +34,7 @@ static int divideIntButRoundUp(int dividend, int divisor) {
 }
 
 // byteSpecification is in hex. Example: "00 af de"
-// We would be able to do so much more with this in sigscan. One day
+// Appends bytes specified by -byteSpecification- to the end of -vec-.
 static void pushIntoUCharVector(std::vector<unsigned char>& vec, const char* byteSpecification) {
 	vec.reserve(vec.size() + divideIntButRoundUp((int)strlen(byteSpecification), 2));
 	unsigned long long accumulatedNibbles = 0;
@@ -72,6 +77,11 @@ static void pushIntoUCharVector(std::vector<unsigned char>& vec, const char* byt
 	}
 }
 
+// byteSpecification is in hex. Example: "00 af de"
+// Compares bytes between -vec- and -byteSpecification-.
+// vecEnd specifies the end of the vector to which the -vec- iterator belongs,
+//  so as not to go out of bounds. It does not mean the end of the region to check for equality.
+//  Reaching -vecEnd- prematurely would mean the bytes are not equal.
 static bool bytesEqual(std::vector<unsigned char>::iterator vec, std::vector<unsigned char>::iterator vecEnd,
 					const char* byteSpecification) {
 	if (vec == vecEnd) return false;
@@ -129,6 +139,10 @@ static bool bytesEqual(std::vector<unsigned char>::iterator vec, std::vector<uns
 	return true;
 }
 
+// Overwrites elements in -dst- using elements from -src- without shifting any elements in -dst-.
+// -end- specifies the end of the vector to which the -dst- iterator belongs.
+//  It does not mean the end of the region to overwrite and is only used for bounds checking.
+//  Reaching the -end- prematurely will stop the overwrite operation.
 static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::vector<unsigned char>::iterator end, std::vector<unsigned char>& src) {
 	for (unsigned char c : src) {
 		if (dst == end) return;
@@ -137,6 +151,10 @@ static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::
 	}
 }
 
+// Overwrites elements in -dst- using -count- characters -c- without shifting any elements in -dst-.
+// -end- specifies the end of the vector to which the -dst- iterator belongs.
+//  It does not mean the end of the region to overwrite and is only used for bounds checking.
+//  Reaching the -end- prematurely will stop the overwrite operation.
 static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::vector<unsigned char>::iterator end, int count, unsigned int c) {
 	while (count) {
 		--count;
@@ -146,6 +164,10 @@ static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::
 	}
 }
 
+// Overwrites 4 elements in -dst- with the unsigned int -val- in Little Endian format without shifting any elements in -dst-.
+// -end- specifies the end of the vector to which the -dst- iterator belongs.
+//  It does not mean the end of the region to overwrite and is only used for bounds checking.
+//  Reaching the -end- prematurely will stop the overwrite operation.
 static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::vector<unsigned char>::iterator end, unsigned int val) {
 	while (val) {
 		if (dst == end) return;
@@ -155,10 +177,18 @@ static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::
 	}
 }
 
+// Overwrites 4 elements in -dst- with the int -val- in Little Endian format without shifting any elements in -dst-.
+// -end- specifies the end of the vector to which the -dst- iterator belongs.
+//  It does not mean the end of the region to overwrite and is only used for bounds checking.
+//  Reaching the -end- prematurely will stop the overwrite operation.
 static void overwriteUCharVector(std::vector<unsigned char>::iterator dst, std::vector<unsigned char>::iterator end, int val) {
 	overwriteUCharVector(dst, end, (unsigned int)val);
 }
 
+// Reads 4 elements from -dst- as one unsigned int and returns the result. The unsigned int is assumed to be stored in Little Endian format.
+// -end- specifies the end of the vector to which the -dst- iterator belongs.
+//  It does not mean the end of the region to read from and is only used for bounds checking.
+//  Reaching the -end- prematurely will stop the read operation.
 static unsigned int readFromUCharArray(std::vector<unsigned char>::iterator dst, std::vector<unsigned char>::iterator end) {
 	unsigned int v = 0;
 	for (int i = 0; i < 4; ++i) {
@@ -169,6 +199,7 @@ static unsigned int readFromUCharArray(std::vector<unsigned char>::iterator dst,
 	return v;
 }
 
+// Reads a serialized FString from the -file-.
 static void readString(std::wstring& str, FILE* file) {
 	int length;
 	fread(&length, 4, 1, file);
@@ -185,11 +216,14 @@ static void readString(std::wstring& str, FILE* file) {
 	}
 }
 
+// A representation of an FName
 struct NameData {
 	std::wstring name;
 	int numberPart = 0;
 };
 
+// Reads a serialized FName from the -file-.
+// The nameMap is used to immediately convert the base part of the name to a string.
 NameData readNameData(std::vector<std::wstring>& nameMap, FILE* file) {
 	NameData newData;
 	int nameIndex;
@@ -204,6 +238,7 @@ NameData readNameData(std::vector<std::wstring>& nameMap, FILE* file) {
 	return newData;
 }
 
+// Creates a string representation of the provided -nameData- by combining the base name part with the number part.
 std::wstring nameDataToString(NameData& nameData) {
 	std::wstring result = nameData.name;
 	if (nameData.numberPart) {
@@ -226,6 +261,7 @@ struct UEGuid {
 	DWORD d = 0;
 };
 
+// Reads a serialized FGuid from the -file-.
 void readGuid(UEGuid& guid, FILE* file) {
 	fread(&guid.a, 4, 1, file);
 	fread(&guid.b, 4, 1, file);
@@ -233,6 +269,8 @@ void readGuid(UEGuid& guid, FILE* file) {
 	fread(&guid.d, 4, 1, file);
 }
 
+// Checks first 4 bytes and tells if the specified .UPK file is not encrypted.
+// If this function encounters any errors, you can obtain them using the getLastUpkError() function.
 bool isUpk(const std::wstring& path) {
 	HANDLE fileHandle = CreateFileW(
 		path.c_str(),
@@ -257,6 +295,10 @@ bool isUpk(const std::wstring& path) {
 	return result;
 }
 
+// Performs the hardcoded patch operation on the REDGame.upk file.
+// The file must have been decrypted and decompressed beforehand.
+// The function does not create any backups and modifies the file in-place.
+// If this function encounters any errors, you can obtain them using the getLastUpkError() function.
 bool performUpkPatching(const std::wstring& path, bool checkOnly, bool* needPatch)
 {
 	if (needPatch) *needPatch = false;
@@ -560,6 +602,7 @@ bool performUpkPatching(const std::wstring& path, bool checkOnly, bool* needPatc
 	ParamSelectColor_bStructWillBeModified_1[10] = 1;
 	std::vector<unsigned char> GetColorMax(codeStart + 0x560, codeStart + 0x56a);
 
+	// This is a copy of the patch below
 	if (bytesEqual(codeStart + 0x3a4, copyBuf.end(), "07 5e 05 96 a4 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 16 1d ff ff ff ff 16")) {
 		if (needPatch) *needPatch = false;
 		return true;
@@ -567,14 +610,96 @@ bool performUpkPatching(const std::wstring& path, bool checkOnly, bool* needPatc
 		if (needPatch) *needPatch = true;
 	}
 	if (checkOnly) return true;
+	
+/* Patch instructions:
+Read 516/3ba-531/3c9 inclusive (28/16 bytes) as the bytecode for Param.SelectColor.
+At 4f4/3a4 write 07 5e 05 96 a4 Param.SelectColor(with bStructWillBeModified=1) 16 1d ff ff ff ff 16 (40/28 bytes total, range 4f4/3a4-51b/3bf)
+Fill 51c/3c0-533/3cb inclusive (24/12 bytes) with 0b (nop).
+Read 71c/560-725/569 inclusive (10 bytes) as the bytecode for GetColorMax().
+At 6de/53a write 07 45 07 99 a3 Param.SelectColor(with bStructWillBeModified=1) 16 GetColorMax() 16 0f Param.SelectColor(with bStructWillBeModified=1)
+    1d ff ff ff ff (79/55 bytes total, range 6de/53a-72c/570)
+Fill 72d/571-744/57c inclusive (24/12 bytes) with 0b (nop).
+At 3cc for file insert 12 extra nops.
+At 57d (the position specified here is the one from before the nop insertion above.
+    It may have become greater by 12 bytes if you have done the insertion) for file insert 12 extra nops. */
+
+
+
+	/* Originally the code segment looks like this. The script offsets on the left are provided in 123/122 format, and
+	* the left number is the offset in the RAM representation of the bytecode (deserialized bytecode), while the right
+	* number is the offset in the disk/.UPK representation of the bytecode (serialized bytecode).
+	* The bytes after the ; are telling the actual bytes of the bytecode. They're also separated by /, and the left
+	* side means the bytes from the RAM bytecode representation, while the right side means bytes from the disk/.UPK
+	* bytecode representation.
+	* The counts of bytes, whenever specified, are specified in decimal, while offsets and bytecodes are specified in hex.
+	* Counts of bytes, if vary between RAM and disk representations, are also specified in pairs, separated by /.
+	* 
+4f4/3a4: SubtractSubtractInt ; int-- ; a6
+4f5/3a5:   StructMember ; 35
+             Property=SelectColor ; ?? ?? ?? ?? 00 00 00 00 / 00 1A 00 00
+             Struct=CharaSelectPlayerParam ; ?? ?? ?? ?? 00 00 00 00 / 07 1A 00 00
+             bMemberAccessRequiresStructCopy=0 ; 00
+             bStructWillBeModified=1 ; 01
+508/3b0:     LocalOutVariable ; 48
+               Param ; ?? ?? ?? ?? 00 00 00 00 / 29 1B 00 00
+511/3b5: EndFunctionParams ; 16
+512/3b6: JumpIfNot ; 07
+           -> 55e ; 5e 05  ; 55e specifies the file offset in RAM bytecode representation relative to the start of the whole script (it is same for both disk and RAM bytecodes)
+515/3b9: Less_IntInt ; int < int ; 96
+516/3ba:   StructMember ; 35
+517/3bb:     Property=SelectColor ; ?? ?? ?? ?? 00 00 00 00 / 00 1A 00 00
+51f/3bf:     Struct=CharaSelectPlayerParam ; ?? ?? ?? ?? 00 00 00 00 / 07 1A 00 00
+527/3c3:     bMemberAccessRequiresStructCopy=0 ; 00
+528/3c4:     bStructWillBeModified=0 ; 00
+529/3c5:     LocalOutVariable ; 48
+52a/3c6:       Param ; ?? ?? ?? ?? 00 00 00 00 / 29 1B 00 00
+532/3ca:   IntZero ; 25
+533/3cb: EndFunctionParams ; 16 */
 
 	std::vector<unsigned char> patch;
 	pushIntoUCharVector(patch, "07 5e 05 96 a4");
 	patch.insert(patch.end(), ParamSelectColor_bStructWillBeModified_1.begin(), ParamSelectColor_bStructWillBeModified_1.end());
 	pushIntoUCharVector(patch, "16 1d ff ff ff ff 16");
+	/* This patch means:
+4f4/3a4: JumpIfNot 5e5 (07 5e 05)  # 5e5 is the offset in RAM bytecode representation relative to the start of the whole script (it is same for both disk and RAM bytecodes)
+4f7/3a7:     Less_IntInt (96)  # int < int
+4f8/3a8: 	    SubtractSubtract_PreInt (a4)  # --int
+4f9/3a9: 		    Param.SelectColor(with bStructWillBeModified=1) ; 28/16 bytes
+515/3b9: 		EndFunctionParms (16)
+516/3ba: 		IntConst (1d)
+517/3bb: 		    -1 (ff ff ff ff)
+51b/3bf: 	EndFunctionParms (16) */
 	overwriteUCharVector(codeStart + 0x3a4, copyBuf.end(), patch);
 	overwriteUCharVector(codeStart + 0x3c0, copyBuf.end(), 12, 0x0b);
 
+	/* Original code segment:
+6de/53a: AddAdd_Int ; int++ ; a5
+6df/53b:   StructMember ; 35
+6e0/53c:     Property=SelectColor ; ?? ?? ?? ?? 00 00 00 00 / 00 1A 00 00
+6e8/540:     Struct=CharaSelectPlayerParam ; ?? ?? ?? ?? 00 00 00 00 / 07 1A 00 00
+6f0/544:     bMemberAccessRequiresStructCopy=0 ; 00
+6f1/545:     bStructWillBeModified=1 ; 01
+6f2/546:     OutVariable Param ; 48 ?? ?? ?? ?? 00 00 00 00 / 48 29 1B 00 00
+6fb/54b: EndFunctionParms ; 16
+6fc/54c: JumpIfNot 745 ; 07 45 07
+6ff/54f: GreaterEqual_IntInt ; 99
+700/550:   StructMember ; 35
+701/551:     Property=SelectColor ; ?? ?? ?? ?? 00 00 00 00 / 00 1A 00 00
+709/555:     Struct=CharaSelectPlayerParam ; ?? ?? ?? ?? 00 00 00 00 / 07 1A 00 00
+711/559:     bMemberAccessRequiresStructCopy=0 ; 00
+712/55a:     bStructWillBeModified=0 ; 00
+713/55b:     OutVariable Param ; 48 ?? ?? ?? ?? 00 00 00 00 / 48 29 1B 00 00
+71c/560:   GetColorMax() ; 1B 28 0A 00 00 00 00 00 00 16
+726/56a: EndFunctionParms ; 16
+727/56b: Let ; 0f
+728/56c:   StructMember ; 35
+729/56d:     Property=SelectColor ; ?? ?? ?? ?? 00 00 00 00 / 00 1A 00 00
+731/571:     Struct=CharaSelectPlayerParam ; ?? ?? ?? ?? 00 00 00 00 / 07 1A 00 00
+739/575:     bMemberAccessRequiresStructCopy=0 ; 00
+73a/576:     bStructWillBeModified=1 ; 01
+73b/577:     OutVariable Param ; 48 ?? ?? ?? ?? 00 00 00 00 / 48 29 1B 00 00
+744/57c:   IntZero ; 25
+745/57d: */
 	patch.clear();
 	pushIntoUCharVector(patch, "07 45 07 99 a3");
 	patch.insert(patch.end(), ParamSelectColor_bStructWillBeModified_1.begin(), ParamSelectColor_bStructWillBeModified_1.end());
@@ -583,6 +708,19 @@ bool performUpkPatching(const std::wstring& path, bool checkOnly, bool* needPatc
 	pushIntoUCharVector(patch, "16 0f");
 	patch.insert(patch.end(), ParamSelectColor_bStructWillBeModified_1.begin(), ParamSelectColor_bStructWillBeModified_1.end());
 	pushIntoUCharVector(patch, "1d ff ff ff ff");
+	/* This patch means:
+6de/53a: JumpIfNot 745 (07 45 07)
+6e1/53d:     GreaterEqual_IntInt (99) ; int >= int
+6e2/53e: 	    AddAdd_PreInt (a3) ; ++int
+6e3/53f: 	        Param.SelectColor(with bStructWillBeModified=1) ; 28/16 bytes
+6ff/54f: 	    EndFunctionParms (16)
+700/550: 	    GetColorMax() ; 10 bytes
+70a/55a: 	EndFunctionParms (16)
+70b/55b: Let (0f)
+70c/55c:     Param.SelectColor(with bStructWillBeModified=1) ; 28/16 bytes
+728/56c: 	IntConst (1d)
+729/56d: 	    -1 (ff ff ff ff)
+72d/571: */
 	overwriteUCharVector(codeStart + 0x53a, copyBuf.end(), patch);
 	overwriteUCharVector(codeStart + 0x571, copyBuf.end(), 12, 0x0b);
 
