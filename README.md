@@ -32,7 +32,7 @@ Steam may start downloading 4GB of stuff and say it's validating something in th
 
 ## Undoing changes if game stopped working
 
-If after pressing the **Patch GuiltyGear** button the game stopped working, you can go into the game installation directory and fine and replace the following files:
+If after pressing the **Patch GuiltyGear** button the game stopped working, you can go into the game installation directory and find and replace the following files:
 
 - Replace `...\Binaries\Win32\GuiltyGearXrd.exe` with `...\Binaries\Win32\GuiltyGearXrd_backup.exe`
 - Replace `...\REDGame\CookedPCConsole\REDGame.upk` with `...\REDGame\CookedPCConsole\REDGame_backup.upk`
