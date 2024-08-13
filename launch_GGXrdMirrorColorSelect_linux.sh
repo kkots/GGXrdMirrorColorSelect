@@ -4,6 +4,22 @@
 
 # This script launches the mod's .exe in Wine under the same wineserver as GuiltyGearXrd.exe process so that the mod can actually find the Guilty Gear process and find its process or installation files via Steam.
 
+# If not the mod's app exe, then some of the other exes that the mod depends on and needs to run, require
+# ".NET Desktop Runtime" version  6.?.?? (read the message the app gives you to determine the version).
+# Download the 64-bit Windows (not Linux!) installer from Microsoft's website:
+# https://dotnet.microsoft.com/en-us/download/dotnet/6.0
+# The (Windows) installer will have to be launched (on Linux) through Wine.
+# Navigate to the foler where you downloaded the .NET installer and launch it under Wine under the Guilty Gear's WINEPREFIX with WINEFSYNC set to 1:
+# ```bash
+# cd ~   # replace with the actual folder where the .NET installer is
+# WINEFSYNC=1 WINEPREFIX=$MYWINEPREFIX "$PATHTOWINE" dotnet-sdk-6.0.405-win-x64.exe
+# # the .NET version here is an example, I don't know the exact version
+# ```
+# If you don't know the WINEPREFIX (virtual environment) or PATHTOWINE variables, you could use this script to launch the .NET installer.
+# To do so, simply change the TOOLNAME variable below to the name of the .NET executable, place the .sh script
+# into the same folder as the exe and run the .sh script.
+# One the .NET runtime is installed, it will stay installed under that WINEPREFIX (virtual environment) forever, there's no need to install it again.
+
 
 # This mod's tool that we want to launch.
 TOOLNAME=GGXrdMirrorColorSelect.exe
