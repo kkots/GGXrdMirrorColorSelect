@@ -6,6 +6,11 @@
 
 # If not the mod's app exe, then some of the other exes that the mod depends on and needs to run, require
 # ".NET Desktop Runtime" version  6.?.?? (read the message the app gives you to determine the version).
+# You can use the install_dotnet.sh script to install it. It must be installed in the same Wine environment
+# that Guilty Gear Xrd runs in and that script takes care of that.
+# Once the .NET runtime is installed, it will stay installed under that WINEPREFIX (virtual environment) forever, there's no need to install it again.
+
+# To install .NET Runtime manually you can:
 # Download the 64-bit Windows (not Linux!) installer from Microsoft's website:
 # https://dotnet.microsoft.com/en-us/download/dotnet/6.0
 # The (Windows) installer will have to be launched (on Linux) through Wine.
@@ -16,23 +21,30 @@
 # # the .NET version here is an example, I don't know the exact version
 # ```
 # If you don't know the WINEPREFIX (virtual environment) or PATHTOWINE variables, you could use this script to launch the .NET installer.
-# To do so, simply change the TOOLNAME variable below to the name of the .NET executable, place the .sh script
-# into the same folder as the exe and run the .sh script.
-# One the .NET runtime is installed, it will stay installed under that WINEPREFIX (virtual environment) forever, there's no need to install it again.
+# To do so, simply change the TOOLNAME variable below to the name of the .NET executable, or launch this script with
+# an extra argument where you specify the dotnet installer name, like so:
+# ./launch_GGXrdMirrorColorSelect_linux.sh dotnet-sdk-6.0.405-win-x64.exe
+# This .sh script must be placed into the same folder as the exe before being run or you can provide the full path in the argument or TOOLNAME.
+# Once the .NET runtime is installed, it will stay installed under that WINEPREFIX (virtual environment) forever, there's no need to install it again.
 
 
 # This mod's tool that we want to launch.
-TOOLNAME=GGXrdMirrorColorSelect.exe
+TOOLNAME="${1-GGXrdMirrorColorSelect.exe}"  # ${VARNAME-DEFAULTVALUE} substitutes DEFAULTVALUE in case the variable is empty
+PRINT_DOTNET_WARNING=$([[ -z $1 ]] && echo true || echo false)
+ONLY_PRINT_WINEPREFIX=false
+if [ "$2" == "--only-print-wineprefix" ]; then
+  ONLY_PRINT_WINEPREFIX=true
+fi
 
-if [ ! -f $TOOLNAME ]; then
-    echo $TOOLNAME not found in the current directory. Please cd into this script\'s directory and launch it again.
-    exit
+if [ ONLY_PRINT_WINEPREFIX == false ] && [ ! -f "$TOOLNAME" ]; then
+    echo "$TOOLNAME" not found in the current directory. Please cd into this script\'s directory and launch it again.
+    exit 1
 fi
 
 GUILTYGEAR_PID=$(pidof -s GuiltyGearXrd.exe)
 if [ $? != 0 ]; then # if last command's (pidof's) exit code is not success
     echo Guilty Gear Xrd not launched. Please launch it and try again.
-    exit
+    exit 1
 fi
 
 GUILTYGEAR_WINEPREFIX=$(
@@ -61,7 +73,12 @@ GUILTYGEAR_WINEPREFIX=$(
 )
 if [ "$GUILTYGEAR_WINEPREFIX" == "" ]; then
     echo "Couldn't determine Guilty Gear Xrd's WINEPREFIX."
-    exit
+    exit 1
+fi
+
+if [ $ONLY_PRINT_WINEPREFIX == true ]; then
+  echo "$GUILTYGEAR_WINEPREFIX"
+  exit
 fi
 
 GUILTYGEAR_WINELOADER=$(
@@ -79,7 +96,11 @@ GUILTYGEAR_WINELOADER=$(
 )
 if [ "$GUILTYGEAR_WINELOADER" == "" ]; then
     echo "Couldn't determine Guilty Gear Xrd's WINELOADER."
-    exit
+    exit 1
+fi
+
+if [ $PRINT_DOTNET_WARNING == true ]; then
+  echo If the program gives error message \"You must install .NET Desktop Runtime to run this application.\" you can run the ./install_dotnet.sh to install it in the same environment Guilty Gear Xrd runs in.
 fi
 
 # The 2> /dev/null pipes stderr (error output) into nowhere.
