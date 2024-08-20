@@ -18,6 +18,7 @@ fi
 
 GUILTYGEAR_WINEPREFIX=$(./"$WINE_LAUNCHER_NAME" "unused" "--only-print-wineprefix")
 if [ $? != 0 ]; then
+  echo "$GUILTYGEAR_WINEPREFIX"
   echo "Failed to obtain GUILTYGEAR_WINEPREFIX using the $WINE_LAUNCHER_NAME script"
   exit 1
 fi
@@ -39,32 +40,22 @@ DOWNLOAD_URL=$(echo "$DOWNLOAD_URL" | sed -r "s/PLATFORM/$PLATFORM/")
 # So you should only run this script manually if you really
 # need to install .NET.
 
-# Only ask for headers, "-D -" prints response headers into stdout,
-# -o /dev/null redirects the file download itself into nothingness.
+# Only ask for headers, "-I" makes it send a HEAD request instead
+# of GET, so not downloading any file,
+# -w %{url_effective} makes it print the final URL after all the
+# redirects into stdout,
+# -o /dev/null redirects the file download into nothingness.
 # -sS makes it silent but print errors on error.
-
-# tr -d '\r' deletes "caret return" character from the output.
-# This is needed because in the HTTP protocol specification, \r\n
-# is defined as the separator for HTTP header 'name: value' pairs.
-HTTP_HEADERS=$(curl -sS -D - $DOWNLOAD_URL -o /dev/null | tr -d '\r')
+# -L makes it follow redirects
+DOWNLOAD_URL=$(curl -sS -L  -I -w %{url_effective} $DOWNLOAD_URL -o /dev/null)
 if [ $? != 0 ]; then
-  echo "$HTTP_HEADERS"  # print the errors
+  echo "$DOWNLOAD_URL"  # print the errors
   print_failed_to_request
   exit 1
 fi
-
-echo "$HTTP_HEADERS" | grep -P 'HTTP/\d+(\.\d+)* 301(\s+.*)?' > /dev/null || failed=true
-if [ $failed == true ]; then
-  echo Error: The "$DOWNLOAD_URL" site responded not with a redirect.
-  print_failed_to_request
-  exit 1
-fi
-
-# Grab the Location header, usually present in a redirection response
-LOCATION="$(echo "$HTTP_HEADERS" | grep -P "^Location: " | sed -r 's/^Location: //')"
 
 # Remove everything up to and including the last /
-EXE_NAME="$(echo "$LOCATION" | sed -r 's/.*\///')"
+EXE_NAME="$(echo "$DOWNLOAD_URL" | sed -r 's/.*\///')"
 
 if [ ! -n "$EXE_NAME" ]; then
   print_failed_to_request
@@ -72,8 +63,8 @@ if [ ! -n "$EXE_NAME" ]; then
 fi
 
 if [ ! -f "$EXE_NAME" ]; then
- echo "$EXE_NAME not found. Downloading from $LOCATION"
- curl "$LOCATION" -o "$EXE_NAME"
+ echo "$EXE_NAME not found. Downloading from $DOWNLOAD_URL"
+ curl "$DOWNLOAD_URL" -o "$EXE_NAME"
 else
  echo "$EXE_NAME" already exists. Will try to launch it
 fi
