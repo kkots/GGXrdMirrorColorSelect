@@ -178,13 +178,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	
 	beginInsertRows();
 
-	addTextRow(L"App for patching Binaries\\Win32\\GuitlyGearXrd.exe and REDGame\\CookedPCConsole\\REDGame.upk,");
+	addTextRow(L"App for patching Binaries\\Win32\\GuiltyGearXrd.exe and REDGame\\CookedPCConsole\\REDGame.upk,");
 
 	addTextRow(L"so that you could select the mirror color in Guilty Gear Xrd -REVELATOR- Rev 2 version 2211 (works as of 2024 August 11).");
 	
-	addTextRow(L"Backups of GuitlyGearXrd.exe and REDGame.upk will be created,");
+	addTextRow(L"Backups of GuiltyGearXrd.exe and REDGame.upk will be created,");
 	
-	addTextRow(L"so in case the game stops working after patching, substitute the backup copies of GuitlyGearXrd.exe and REDGame.upk");
+	addTextRow(L"so in case the game stops working after patching, substitute the backup copies of GuiltyGearXrd.exe and REDGame.upk");
 
 	addTextRow(L"for the current ones. All these files should be located in the game's installation directory in corresponding subdirectories.");
 	
