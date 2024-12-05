@@ -235,8 +235,8 @@ static bool readWholeFile(FILE* file, std::vector<char>& wholeFile) {
             // assume feof
             break;
         }
-        wholeFilePtr += 1024;
-        readBytesTotal += 1024;
+        wholeFilePtr += sizeToRead;
+        readBytesTotal += sizeToRead;
     }
     return true;
 }
