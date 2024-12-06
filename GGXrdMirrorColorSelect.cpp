@@ -320,18 +320,19 @@ HANDLE findOpenGgProcess(bool* foundButFailedToOpen) {
 bool findGgInstallPath(std::wstring& path) {
 	
 	if (!ggProcessModulePath.empty()) {
+		std::wstring tmpPath = ggProcessModulePath;
 		for (int i = 0; i < 3; ++i) {
-			int pos = findCharRevW(ggProcessModulePath.c_str(), L'\\');
+			int pos = findCharRevW(tmpPath.c_str(), L'\\');
 			if (pos < 1) {
 				break;
 			}
-			if (pos > 0 && (ggProcessModulePath[pos - 1] == L'\\' || ggProcessModulePath[pos - 1] == L':')) {
+			if (pos > 0 && (tmpPath[pos - 1] == L'\\' || tmpPath[pos - 1] == L':')) {
 				break;
 			}
-			ggProcessModulePath.resize(pos);
+			tmpPath.resize(pos);
 		}
-		if (!ggProcessModulePath.empty()) {
-			path = ggProcessModulePath;
+		if (!tmpPath.empty()) {
+			path = tmpPath;
 			return true;
 		}
 		return false;
@@ -521,6 +522,7 @@ HWND addTextRow(const wchar_t* txt) {
 // Breaks up a string into multiple by -c- char. The new strings do not include the delimiter.
 std::vector<std::wstring> split(const std::wstring& str, wchar_t c) {
 	std::vector<std::wstring> result;
+	if (str.empty()) return result;
 	const wchar_t* strStart = &str.front();
 	const wchar_t* strEnd = strStart + str.size();
 	const wchar_t* prevPtr = strStart;
