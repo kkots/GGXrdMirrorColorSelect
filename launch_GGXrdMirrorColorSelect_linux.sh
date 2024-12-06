@@ -2,7 +2,7 @@
 # Make sure to give yourself permission to launch this script with 'chmod u+x launch_GGXrdMirrorColorSelect_linux.sh' command.
 # Then cd into the same directory as this script and launch it using './launch_GGXrdMirrorColorSelect_linux.sh' or 'bash launch_GGXrdMirrorColorSelect_linux.sh'.
 
-# This script launches the mod's .exe in Wine under the same wineserver as GuiltyGearXrd.exe process so that the mod can actually find the Guilty Gear process and find its process or installation files via Steam.
+# This script launches the mod's .exe in Wine under the same wineserver as GuiltyGearXrd.exe process so that the mod can actually find the Guilty Gear process and its installation files via Steam.
 
 # If not the mod's app exe, then some of the other exes that the mod depends on and needs to run, require
 # ".NET Desktop Runtime" version  6.?.?? (read the message the app gives you to determine the version).
@@ -29,7 +29,12 @@
 
 
 # This mod's tool that we want to launch.
-TOOLNAME="${1-GGXrdMirrorColorSelect.exe}"  # ${VARNAME-DEFAULTVALUE} substitutes DEFAULTVALUE in case the variable is empty
+TOOLNAME="${1-GGXrdMirrorColorSelect_32bit.exe}"  # ${VARNAME-DEFAULTVALUE} substitutes DEFAULTVALUE in case the variable is empty
+# Running the 64-bit (unsuffixed) version of the mod will cause this error:
+# >Application could not be started, or no application associated with the specified file.
+# >ShellExecuteEx failed: File not found.
+# It is caused by attempting to run a 64-bit program on a 32-bit Wine prefix. Guilty Gear Xrd is a 32-bit game and is in a 32-bit Wine prefix.
+# To tell if a Wineprefix is 64-bit or 32-bit, check the existence of $WINEPREFIX/drive_c/windows/syswow64. If that exists, it's 64-bit.
 PRINT_DOTNET_WARNING=$([[ -z $1 ]] && echo true || echo false)
 ONLY_PRINT_WINEPREFIX=false
 if [ "$2" == "--only-print-wineprefix" ]; then

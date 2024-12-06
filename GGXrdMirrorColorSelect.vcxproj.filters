@@ -76,4 +76,11 @@
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="launch_GGXrdMirrorColorSelect_linux.sh" />
+    <CopyFileToFolders Include="install_dotnet.sh" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+  </ItemGroup>
 </Project>
