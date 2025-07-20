@@ -36,7 +36,7 @@ HFONT font = NULL;
 HWND hWndButton = NULL;
 HWND mainWindow = NULL;
 
-// The patch of the GuiltyGearXrd.exe file that was obtained when the GuiltyGearXrd.exe process was seen working.
+// The path of the GuiltyGearXrd.exe file that was obtained when the GuiltyGearXrd.exe process was seen working.
 std::wstring ggProcessModulePath;
 std::wstring steamLibraryPath;
 
@@ -347,7 +347,7 @@ bool findGgInstallPath(std::wstring& path) {
 	} closeStuffOnReturn;
 
 	HKEY steamReg = NULL;
-	LSTATUS lStatus = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", NULL, KEY_READ, &steamReg);
+	LSTATUS lStatus = RegOpenKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Valve\\Steam", NULL, KEY_READ, &steamReg);
 	if (lStatus != ERROR_SUCCESS) {
 		WinError err;
 		OutputDebugStringW(L"RegOpenKeyExW failed: ");
@@ -360,7 +360,7 @@ bool findGgInstallPath(std::wstring& path) {
 	wchar_t gimmePath[MAX_PATH] { L'0' };
 	DWORD gimmePathSize = sizeof gimmePath;
 	DWORD dataType = 0;
-	lStatus = RegQueryValueExW(steamReg, L"InstallPath", NULL, &dataType, (BYTE*)gimmePath, &gimmePathSize);
+	lStatus = RegQueryValueExW(steamReg, L"SteamPath", NULL, &dataType, (BYTE*)gimmePath, &gimmePathSize);
 	if (lStatus != ERROR_SUCCESS) {
 		WinError err;
 		OutputDebugStringW(L"RegQueryValueExW failed: ");

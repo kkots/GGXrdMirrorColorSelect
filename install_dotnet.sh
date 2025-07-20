@@ -4,7 +4,7 @@
 # under Wine in the same WINEPREFIX that Guilty Gear Xrd runs in.
 
 EXE_NAME=not_yet_known
-DOWNLOAD_URL='http://aka.ms/dotnet/6.0/dotnet-sdk-win-PLATFORM.exe'  # substitue x64 or x86 for PLATFORM
+DOWNLOAD_URL='http://aka.ms/dotnet/6.0/dotnet-runtime-win-PLATFORM.exe'  # substitue x64 or x86 for PLATFORM
 WINE_LAUNCHER_NAME=launch_GGXrdReversalTool_linux.sh
 failed=false
 
